@@ -1,197 +1,266 @@
-## 🚀 Production-Style Containerized Application Deployment on AWS
+# 🚀 Production-Grade Multi-AZ AWS EKS Platform Deployment
 
-This project demonstrates end-to-end deployment of a production-style containerized full-stack application on AWS using Infrastructure as Code, CI/CD automation, and Kubernetes orchestration.
+This project demonstrates an enterprise-style production deployment of a containerized YouTube Clone application on **Amazon EKS**, provisioned entirely using **Terraform (Infrastructure as Code)** and deployed through a fully automated **CI/CD pipeline using GitHub Actions**.
 
-The goal of this project is to simulate a real-world cloud platform setup including networking, security, automation, and scalable deployment architecture.
+The architecture follows high availability, security, scalability, and DevOps best practices.
+
+---
+
+# 🏗️ Architecture Overview
+
+## High-Level Design
+
+```
+                Internet
+                    │
+              AWS ALB (Ingress)
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+   Public Subnet AZ-1      Public Subnet AZ-2
+        │                       │
+        └───────────┬───────────┘
+                    │
+            EKS Cluster (Private Subnets)
+        ┌───────────┴───────────┐
+        │                       │
+ Managed Node Group       Managed Node Group
+        │                       │
+   Kubernetes Pods (YouTube Clone App)
+                    │
+              Amazon RDS (Optional)
+                    │
+              Private Subnets
+```
+
+---
+
+# 🧱 Infrastructure Components
+
+## Networking (Terraform Managed)
+
+* Custom VPC
+* 2 Public Subnets (Multi-AZ)
+* 2 Private Subnets (Multi-AZ)
+* Internet Gateway
+* NAT Gateway
+* Route Tables (Public & Private)
+* Security Groups (Least Privilege)
+
+## Kubernetes Platform
+
+* Amazon EKS Cluster
+* Managed Node Groups (Private Subnets)
+* Cluster Autoscaler
+* Horizontal Pod Autoscaler (HPA)
+* IAM Roles for Service Accounts (IRSA)
+* Kubernetes RBAC
+
+## Load Balancing
+
+* AWS Application Load Balancer (ALB)
+* ALB Ingress Controller
+
+## Container & Registry
+
+* Dockerized YouTube Clone Application
+* Amazon ECR (with lifecycle policies)
+
+## CI/CD
+
+* GitHub Actions
+* Docker Build & Tag
+* Push Image to ECR
+* Deploy to EKS using kubectl
+* Rolling Updates enabled
+
+## Monitoring & Observability
+
+* AWS CloudWatch
+* Container Insights
+* ALB metrics
+* Log analysis for troubleshooting
+
+---
+
+# 🔐 Security Best Practices Implemented
+
+* Private worker nodes (no public IPs)
+* IAM least-privilege policies
+* IRSA for secure pod-to-AWS access
+* Security group isolation between tiers
+* RDS in private subnet
+* Terraform remote backend with state locking
+
+---
 
-### Architecture:
+# 📁 Repository Structure
+
+```
+.
+├── terraform/
+│   ├── modules/
+│   │   ├── vpc/
+│   │   ├── eks/
+│   │   ├── rds/
+│   │   └── alb/
+│   ├── main.tf
+│   ├── variables.tf
+│   └── backend.tf
+│
+├── app/
+│   ├── Dockerfile
+│   └── source-code/
+│
+├── k8s/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   └── hpa.yaml
+│
+├── .github/workflows/
+│   └── ci-cd.yaml
+│
+└── README.md
+```
 
-Internet
-   ↓
-ALB (via Ingress Controller)
-   ↓
-EKS Cluster
-   ↓
-YouTube Clone Pods
-   ↓
-Images from ECR
+---
 
+# ⚙️ Implementation Steps
 
-### 🏗️ Architecture Overview
+## 1️⃣ Prerequisites
 
-The solution includes:
+* AWS CLI configured
+* kubectl installed
+* Terraform installed
+* Docker installed
+* GitHub repository secrets configured:
 
-Multi-AZ VPC architecture provisioned using Terraform
+  * AWS_ACCESS_KEY_ID
+  * AWS_SECRET_ACCESS_KEY
+  * AWS_REGION
+  * ECR_REPOSITORY
 
-Public and private subnets across Availability Zones
+---
 
-Internet Gateway and NAT Gateway configuration
+## 2️⃣ Provision Infrastructure (Terraform)
 
-Application Load Balancer (ALB) in public subnet
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
 
-EC2-based Kubernetes worker nodes in private subnet
+This will provision:
 
-Dockerized full-stack application
+* VPC
+* Subnets
+* NAT Gateway
+* EKS Cluster
+* Managed Node Groups
+* IAM Roles
+* ALB resources
 
-GitHub Actions for CI/CD automation
+---
 
-Secure IAM role-based access
+## 3️⃣ Configure kubectl
 
-Remote Terraform backend using S3 with state locking
+```bash
+aws eks update-kubeconfig --region <region> --name <cluster-name>
+```
 
-### 🧱 Infrastructure Components
-#### 1️⃣ Networking (Terraform)
+Verify:
 
-Custom VPC with CIDR block
+```bash
+kubectl get nodes
+```
 
-Public and Private Subnets (Multi-AZ)
+---
 
-Internet Gateway (IGW)
+## 4️⃣ Deploy Application (Manual)
 
-NAT Gateway for outbound internet access
+```bash
+kubectl apply -f k8s/
+```
 
-Route Tables (Public & Private)
+OR
 
-Security Groups following least privilege principle
+---
 
-Application Load Balancer (ALB)
+## 5️⃣ Automated CI/CD Deployment
 
-#### 2️⃣ Containerization (Docker)
+On every push to main branch:
 
-Built Docker images for frontend and backend services
+1. GitHub Actions triggers
+2. Docker image is built
+3. Image pushed to Amazon ECR
+4. Deployment updated in EKS
+5. Rolling update performed automatically
 
-Used multi-stage builds for optimized image size
+---
 
-Tested container locally before deployment
+# 📈 Scaling Strategy
 
-Pushed images to container registry
+## Cluster Level
 
-#### 3️⃣ Kubernetes Deployment
+* Managed Node Groups
+* Cluster Autoscaler enabled
 
-Created Deployments and Services
+## Application Level
 
-Configured LoadBalancer/ALB integration
+* Horizontal Pod Autoscaler (HPA)
+* CPU-based scaling
 
-Implemented rolling updates
+---
 
-Managed ConfigMaps and environment variables
+# 💰 Cost Optimization Strategy
 
-Verified pod health and scaling behavior
+* Minimal node count during testing
+* Infrastructure destroyed after demo using:
 
-#### 4️⃣ CI/CD Pipeline (GitHub Actions)
+```bash
+terraform destroy
+```
 
-Automated workflow includes:
+* ECR lifecycle policy enabled
+* Resources tagged for tracking
 
-Code push triggers pipeline
+---
 
-Docker image build
+# 🧪 Failure & High Availability Considerations
 
-Image push to registry
+* Multi-AZ architecture
+* Private worker nodes
+* ALB health checks
+* Rolling deployments
+* Pod readiness & liveness probes
 
-Kubernetes deployment update
+If one Availability Zone fails:
 
-Infrastructure validation
+* Traffic automatically routes to healthy AZ
+* Pods rescheduled by Kubernetes
+* ALB maintains availability
 
-Pipeline ensures consistent and repeatable deployments.
+---
 
-#### 5️⃣ Infrastructure as Code (Terraform)
+# 🏆 Key Learning Outcomes
 
-Modular Terraform structure
+* Designing secure multi-AZ AWS architectures
+* Managing EKS clusters in production-like setup
+* Implementing CI/CD pipelines for Kubernetes workloads
+* Applying Infrastructure as Code best practices
+* Enforcing IAM and RBAC security models
+* Monitoring and troubleshooting cloud-native workloads
 
-Remote state stored in S3
+---
 
-State locking enabled
+# 🔮 Future Improvements
 
-Variables and reusable modules
+* Blue/Green Deployment
+* ArgoCD for GitOps
+* Prometheus + Grafana integration
+* WAF integration
+* Backup automation for RDS
 
-Automated plan and apply workflow
-
-### 🔐 Security Best Practices Implemented
-
-IAM roles with least privilege access
-
-No hardcoded credentials
-
-Private subnets for compute workloads
-
-Controlled inbound traffic via ALB
-
-Security group-based access restriction
-
-Remote state locking to prevent concurrent changes
-
-### 📦 Project Structure
-
-/terraform
-
-   ├── vpc.tf
-   
-   ├── ec2.tf
-   
-   ├── alb.tf
-   
-   ├── variables.tf
-   
-   └── backend.tf
-
-/docker
-
-   ├── Dockerfile
-   
-   └── docker-compose.yml
-
-/k8s
-
-   ├── deployment.yaml
-   
-   ├── service.yaml
-
-/.github/workflows
-
-   └── ci-cd.yml
-
-
-### 🛠️ Technologies Used
-
-AWS (VPC, EC2, ALB, IAM, S3)
-
-Terraform
-
-Docker
-
-Kubernetes
-
-GitHub Actions
-
-Linux
-
-### 🎯 Key Outcomes
-
-Infrastructure fully automated using Terraform
-
-Application deployed in private subnets
-
-Scalable Kubernetes deployment model
-
-Secure networking with ALB-based access
-
-CI/CD-driven automated deployment pipeline
-
-Production-style architecture simulation
-
-### 📌 What This Project Demonstrates
-
-✔ Cloud networking fundamentals
-✔ Infrastructure as Code capability
-✔ Containerization skills
-✔ Kubernetes deployment knowledge
-✔ CI/CD automation
-✔ Cloud security best practices
-✔ Platform engineering mindset
-
-### 👨‍💻 Author
-
-Bablu Alam
-
-Cloud Operations / Infrastructure Engineer,
-Bangalore, India
+---
